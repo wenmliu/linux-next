@@ -3563,7 +3563,7 @@ static const struct camss_subdev_resources tpg_res_8775p[] = {
 	/* TPG0 */
 	{
 		.regulators = {  },
-		.clock = { "camnoc_rt_axi", "cpas_ahb", "csiphy_rx" },
+		.clock = { "camnoc_axi", "cpas_ahb", "csiphy_rx" },
 		.clock_rate = {
 			{ 400000000 },
 			{ 0 },
@@ -3573,7 +3573,7 @@ static const struct camss_subdev_resources tpg_res_8775p[] = {
 		.interrupt = { "tpg0" },
 		.tpg = {
 			.lane_cnt = 4,
-			.vc_cnt = 1,
+			.dt_cnt = 1,
 			.formats = &tpg_formats_gen1,
 			.hw_ops = &tpg_ops_gen1
 		}
@@ -3582,7 +3582,7 @@ static const struct camss_subdev_resources tpg_res_8775p[] = {
 	/* TPG1 */
 	{
 		.regulators = {  },
-		.clock = { "camnoc_rt_axi", "cpas_ahb", "csiphy_rx" },
+		.clock = { "camnoc_axi", "cpas_ahb", "csiphy_rx" },
 		.clock_rate = {
 			{ 400000000 },
 			{ 0 },
@@ -3592,7 +3592,7 @@ static const struct camss_subdev_resources tpg_res_8775p[] = {
 		.interrupt = { "tpg1" },
 		.tpg = {
 			.lane_cnt = 4,
-			.vc_cnt = 1,
+			.dt_cnt = 1,
 			.formats = &tpg_formats_gen1,
 			.hw_ops = &tpg_ops_gen1
 		}
@@ -3601,17 +3601,15 @@ static const struct camss_subdev_resources tpg_res_8775p[] = {
 	/* TPG2 */
 	{
 		.regulators = {  },
-		.clock = { "camnoc_rt_axi", "cpas_ahb", "csiphy_rx" },
+		.clock = { "csiphy_rx" },
 		.clock_rate = {
-			{ 400000000 },
-			{ 0 },
 			{ 400000000 },
 		},
 		.reg = { "tpg2" },
 		.interrupt = { "tpg2" },
 		.tpg = {
 			.lane_cnt = 4,
-			.vc_cnt = 1,
+			.dt_cnt = 1,
 			.formats = &tpg_formats_gen1,
 			.hw_ops = &tpg_ops_gen1
 		}
@@ -4026,16 +4024,14 @@ static const struct camss_subdev_resources tpg_res_x1e80100[] = {
 	/* TPG0 */
 	{
 		.regulators = {  },
-		.clock = { "camnoc_rt_axi", "cpas_ahb", "csid_csiphy_rx" },
+		.clock = { "csid_csiphy_rx" },
 		.clock_rate = {
-			{ 400000000 },
-			{ 0 },
 			{ 400000000 },
 		},
 		.reg = { "csitpg0" },
 		.tpg = {
 			.lane_cnt = 4,
-			.vc_cnt = 1,
+			.dt_cnt = 1,
 			.formats = &tpg_formats_gen1,
 			.hw_ops = &tpg_ops_gen1
 		}
@@ -4044,16 +4040,14 @@ static const struct camss_subdev_resources tpg_res_x1e80100[] = {
 	/* TPG1 */
 	{
 		.regulators = {  },
-		.clock = { "camnoc_rt_axi", "cpas_ahb", "csid_csiphy_rx" },
+		.clock = { "csid_csiphy_rx" },
 		.clock_rate = {
-			{ 400000000 },
-			{ 0 },
 			{ 400000000 },
 		},
 		.reg = { "csitpg1" },
 		.tpg = {
 			.lane_cnt = 4,
-			.vc_cnt = 1,
+			.dt_cnt = 1,
 			.formats = &tpg_formats_gen1,
 			.hw_ops = &tpg_ops_gen1
 		}
@@ -4062,16 +4056,14 @@ static const struct camss_subdev_resources tpg_res_x1e80100[] = {
 	/* TPG2 */
 	{
 		.regulators = {  },
-		.clock = { "camnoc_rt_axi", "cpas_ahb", "csid_csiphy_rx" },
+		.clock = { "csid_csiphy_rx" },
 		.clock_rate = {
-			{ 400000000 },
-			{ 0 },
 			{ 400000000 },
 		},
 		.reg = { "csitpg2" },
 		.tpg = {
 			.lane_cnt = 4,
-			.vc_cnt = 1,
+			.dt_cnt = 1,
 			.formats = &tpg_formats_gen1,
 			.hw_ops = &tpg_ops_gen1
 		}
@@ -4718,18 +4710,20 @@ static int camss_link_entities(struct camss *camss)
 	}
 
 	for (i = 0; i < camss->res->tpg_num; i++) {
-		for (j = 0; j < camss->res->csid_num; j++) {
-			ret = media_create_pad_link(&camss->tpg[i].subdev.entity,
-						    MSM_TPG_PAD_SRC,
-						    &camss->csid[j].subdev.entity,
-						    MSM_CSID_PAD_SINK,
-						    0);
-			if (ret < 0) {
-				camss_link_err(camss,
-					       camss->tpg[i].subdev.entity.name,
-					       camss->csid[j].subdev.entity.name,
-					       ret);
-				return ret;
+		for (k = 0; k < MSM_TPG_PADS_NUM; k++) {
+			for (j = 0; j < camss->res->csid_num; j++) {
+				ret = media_create_pad_link(&camss->tpg[i].subdev.entity,
+								MSM_TPG_PAD_FIRST_SRC + k,
+								&camss->csid[j].subdev.entity,
+								MSM_CSID_PAD_SINK,
+								0);
+				if (ret < 0) {
+					camss_link_err(camss,
+							camss->tpg[i].subdev.entity.name,
+							camss->csid[j].subdev.entity.name,
+							ret);
+					return ret;
+				}
 			}
 		}
 	}

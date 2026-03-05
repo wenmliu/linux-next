@@ -10,19 +10,12 @@
 #define QC_MSM_CAMSS_TPG_H
 
 #include <linux/clk.h>
+#include <linux/bitfield.h>
 #include <media/media-entity.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-mediabus.h>
 #include <media/v4l2-subdev.h>
-
-#define MSM_TPG_PAD_SINK 0
-#define MSM_TPG_PAD_SRC 1
-#define MSM_TPG_PADS_NUM 2
-
-#define DATA_TYPE_RAW_8BIT		0x2a
-#define DATA_TYPE_RAW_10BIT		0x2b
-#define DATA_TYPE_RAW_12BIT		0x2c
 
 #define ENCODE_FORMAT_UNCOMPRESSED_8_BIT	0x1
 #define ENCODE_FORMAT_UNCOMPRESSED_10_BIT	0x2
@@ -32,8 +25,16 @@
 #define ENCODE_FORMAT_UNCOMPRESSED_20_BIT	0x6
 #define ENCODE_FORMAT_UNCOMPRESSED_24_BIT	0x7
 
-#define TPG_GUP_ID 0
-#define MSM_TPG_NAME "msm_tpg"
+#define MSM_TPG_PAD_FIRST_SRC		0
+#define MSM_TPG_MAX_SRC_STREAMS		4
+#define MSM_TPG_PADS_NUM		MSM_TPG_MAX_SRC_STREAMS
+
+#define TPG_MIN_WIDTH   1
+#define TPG_MIN_HEIGHT  1
+#define TPG_MAX_WIDTH   8191
+#define TPG_MAX_HEIGHT  8191
+
+#define TPG_GRP_ID 0
 
 enum tpg_testgen_mode {
 	TPG_PAYLOAD_MODE_DISABLED = 0,
@@ -79,7 +80,7 @@ struct tpg_hw_ops {
 
 struct tpg_subdev_resources {
 	u8 lane_cnt;
-	u8 vc_cnt;
+	u8 dt_cnt;
 	const struct tpg_formats *formats;
 	const struct tpg_hw_ops *hw_ops;
 };
@@ -92,20 +93,18 @@ struct tpg_device {
 	void __iomem *base;
 	struct camss_clock *clock;
 	int nclocks;
+	u32 en_vc;
 	struct tpg_testgen_config testgen;
 	struct v4l2_mbus_framefmt fmt[MSM_TPG_PADS_NUM];
 	struct v4l2_ctrl_handler ctrls;
 	struct v4l2_ctrl *testgen_mode;
 	const struct tpg_subdev_resources *res;
-	const struct tpg_format *formats;
-	unsigned int nformats;
 	u32 hw_version;
 };
 
 struct camss_subdev_resources;
 
-const struct tpg_format_info *tpg_get_fmt_entry(struct tpg_device *tpg,
-						const struct tpg_format_info *formats,
+const struct tpg_format_info *tpg_get_fmt_entry(const struct tpg_format_info *formats,
 						unsigned int nformats,
 						u32 code);
 
@@ -117,8 +116,6 @@ int msm_tpg_register_entity(struct tpg_device *tpg,
 			    struct v4l2_device *v4l2_dev);
 
 void msm_tpg_unregister_entity(struct tpg_device *tpg);
-
-extern const char * const testgen_payload_modes[];
 
 extern const struct tpg_formats tpg_formats_gen1;
 
