@@ -1272,7 +1272,7 @@ static int csid_link_setup(struct media_entity *entity,
 			return -EBUSY;
 
 		sd = media_entity_to_v4l2_subdev(remote->entity);
-		if (sd->grp_id == TPG_GUP_ID) {
+		if (sd->grp_id == TPG_GRP_ID) {
 			tpg = v4l2_get_subdevdata(sd);
 
 			csid->phy.lane_cnt = tpg->res->lane_cnt;

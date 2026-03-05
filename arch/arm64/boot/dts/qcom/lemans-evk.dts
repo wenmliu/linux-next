@@ -925,3 +925,7 @@
 &xo_board_clk {
 	clock-frequency = <38400000>;
 };
+
+&camss {
+	status = "okay";
+};

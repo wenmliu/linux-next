@@ -240,6 +240,7 @@ static int video_prepare_streaming(struct vb2_queue *q)
 	return ret;
 }
 
+static void video_stop_streaming(struct vb2_queue *q);
 static int video_start_streaming(struct vb2_queue *q, unsigned int count)
 {
 	struct camss_video *video = vb2_get_drv_priv(q);
@@ -247,6 +248,7 @@ static int video_start_streaming(struct vb2_queue *q, unsigned int count)
 	struct media_entity *entity;
 	struct media_pad *pad;
 	struct v4l2_subdev *subdev;
+	u64 streams_mask = 0;
 	int ret;
 
 	ret = video_device_pipeline_alloc_start(vdev);
@@ -258,6 +260,10 @@ static int video_start_streaming(struct vb2_queue *q, unsigned int count)
 	ret = video_check_format(video);
 	if (ret < 0)
 		goto error;
+
+	// 确定需要启用的 streams
+	// 对于video节点，通常只启用 stream 0
+	streams_mask = BIT_ULL(0);
 
 	entity = &vdev->entity;
 	while (1) {
@@ -272,18 +278,38 @@ static int video_start_streaming(struct vb2_queue *q, unsigned int count)
 		entity = pad->entity;
 		subdev = media_entity_to_v4l2_subdev(entity);
 
-		ret = v4l2_subdev_call(subdev, video, s_stream, 1);
-		if (ret < 0 && ret != -ENOIOCTLCMD)
-			goto error;
+		// 检查 subdev 是否支持 streams API
+		if (subdev->flags & V4L2_SUBDEV_FL_STREAMS) {
+			// 使用新的 streams API
+			ret = v4l2_subdev_enable_streams(subdev, pad->index, streams_mask);
+			if (ret < 0) {
+				dev_err(video->camss->dev,
+					"Failed to enable streams on %s pad %u: %d\n",
+					subdev->name, pad->index, ret);
+				goto error;
+			}
+		} else {
+			// 回退到传统的 s_stream
+			ret = v4l2_subdev_call(subdev, video, s_stream, 1);
+			if (ret < 0 && ret != -ENOIOCTLCMD) {
+				dev_err(video->camss->dev,
+					"Failed to call s_stream on %s: %d\n",
+					subdev->name, ret);
+				goto error;
+			}
+		}
 	}
 
 	return 0;
 
 error:
+	// 需要禁用已经启用的 streams
+	video_stop_streaming(q);  // 复用 stop streaming 逻辑来清理
 	video_device_pipeline_stop(vdev);
 
 flush_buffers:
-	video->ops->flush_buffers(video, VB2_BUF_STATE_QUEUED);
+	if (video->ops && video->ops->flush_buffers)
+		video->ops->flush_buffers(video, VB2_BUF_STATE_QUEUED);
 
 	return ret;
 }
